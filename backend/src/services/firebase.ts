@@ -1,6 +1,5 @@
 import * as admin from 'firebase-admin';
 import { WhereFilterOp } from 'firebase-admin/firestore';
-import serviceAccount from '../../firebase-service-account.json';
 
 export const COLLECTIONS = {
   SLOTS: 'slots',
@@ -11,10 +10,26 @@ export const COLLECTIONS = {
 // Initialise the Admin SDK once. Subsequent calls to getApps() prevent double-init
 // if this module is imported multiple times (e.g. during hot-reload in dev).
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
-    projectId: process.env.FIREBASE_PROJECT_ID,
-  });
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+  if (process.env.FIREBASE_PRIVATE_KEY) {
+    // Production: credentials supplied via individual env vars (e.g. Railway)
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey,
+      }),
+    });
+  } else {
+    // Local dev: use service account JSON file
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const serviceAccount = require('../../firebase-service-account.json');
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      projectId: process.env.FIREBASE_PROJECT_ID,
+    });
+  }
 }
 
 /** Firestore database instance — import this wherever you need raw access. */
