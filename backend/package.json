@@ -2,6 +2,9 @@
   "name": "lette-challenge-backend",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
     "build": "tsc",
@@ -16,7 +19,7 @@
     "@types/node": "^22.15.18",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.17",
-    "@types/uuid": "^11.0.0",
+    "@types/uuid": "^8.3.4",
     "ai": "^4.3.16",
     "cors": "^2.8.6",
     "dotenv": "^16.4.7",
