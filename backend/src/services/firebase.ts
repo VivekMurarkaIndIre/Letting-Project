@@ -10,19 +10,11 @@ export const COLLECTIONS = {
 // Initialise the Admin SDK once. Subsequent calls to getApps() prevent double-init
 // if this module is imported multiple times (e.g. during hot-reload in dev).
 if (!admin.apps.length) {
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY
-    ?.replace(/\\\\n/g, '\n')  // handle \\n (double escaped)
-    ?.replace(/\\n/g, '\n')    // handle \n (single escaped)
-    ?.replace(/\n/g, '\n');    // normalize any remaining
-
-  if (process.env.FIREBASE_PRIVATE_KEY) {
-    // Production: credentials supplied via individual env vars (e.g. Railway)
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    // Production: entire service account JSON stored as a single env var
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
     admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey,
-      }),
+      credential: admin.credential.cert(serviceAccount),
     });
   } else {
     // Local dev: use service account JSON file
@@ -30,7 +22,6 @@ if (!admin.apps.length) {
     const serviceAccount = require('../../firebase-service-account.json');
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      projectId: process.env.FIREBASE_PROJECT_ID,
     });
   }
 }
