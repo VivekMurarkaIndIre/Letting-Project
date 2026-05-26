@@ -218,7 +218,7 @@ export default function AdminChat() {
     try {
       const leadsToInvite = matchedLeads.length > 0 ? matchedLeads : [];
 
-      const response = await axios.post(`${API_URL}/api/slots/confirm`, {
+      await axios.post(`${API_URL}/api/slots/confirm`, {
         parsed: parsedSlots,
         leads: leadsToInvite,
       });
