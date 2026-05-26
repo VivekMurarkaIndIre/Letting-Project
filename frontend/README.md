@@ -1,56 +1,61 @@
-# Lette Frontend — AI-Powered Viewing Slot Manager
+# Lette Frontend
 
-## Overview
+React + Vite + TypeScript frontend for the AI-powered viewing slot manager.
 
-React + TypeScript frontend for the Lette take-home challenge. A property manager uses a chat interface to create viewing slots and draft invitation emails via AI. Leads receive a direct link to an invitation acceptance page. Built with Vite, Ant Design, and React Router.
-
-## Key Design Decisions
-
-### 1. Chat interface instead of forms
-
-The AI is the primary interface. The admin describes what they want in natural language ("set up 3 viewings for 22 Maple Street next Tuesday") rather than filling in structured fields. The backend handles ambiguity resolution — if the request is unclear, the assistant asks a clarifying question before presenting a confirmation card.
-
-### 2. Both views mounted simultaneously (CSS display toggle)
-
-The admin tab and invitee tab are both rendered at all times; the inactive one is hidden with `display: none` rather than being unmounted. This preserves the full chat state — messages, parsed slots, confirmation cards — when the admin switches tabs to preview an invitation and then switches back.
-
-### 3. Confirmation card anchored to chat message
-
-When the LLM parses a scheduling request, the confirmation card is rendered inline below the specific assistant bubble that prompted it. If the admin asks a follow-up question (triggering another parse round), the card remains anchored to the original message, keeping the conversation coherent.
-
-### 4. URL-based invitation routing
-
-Invitation emails contain a direct link: `/invite/:invitationId`. React Router handles this route and `InviteePage` auto-loads the invitation from the URL param on mount. The page works standalone — no tab bar, no admin UI — so leads see only their invitation details and an accept button.
-
-## Setup Instructions
+## Setup
 
 ```bash
-# 1. Install dependencies
 cd frontend
 npm install
-
-# 2. Make sure the backend is running on port 3001
-# (see backend/README.md)
-
-# 3. Start the dev server
+# Backend must be running on port 3001
 npm run dev
 ```
 
-The app opens at `http://localhost:5173`.
+## Key Design Decisions
+
+**Chat interface, not forms**
+
+The admin input is a chat-like text area. There are no form fields. The AI interprets natural language — this is the core UX decision.
+
+**CSS display toggle, not conditional rendering**
+
+Both AdminChat and InviteePage are always mounted. Tab switching uses `display: none` rather than unmounting components, preserving chat history when the admin switches tabs.
+
+**Confirmation card anchored to message**
+
+The slot confirmation card is tied to a specific message via `showConfirmation` on the message object, not a separate boolean state. This means the card appears under the right message even across multiple clarifying question exchanges.
+
+**URL-based invitation routing**
+
+`/invite/:invitationId` loads the invitation directly from the URL — matching the link in the email. React Router handles this with a `BrowserRouter` wrapper.
+
+## Environment Variables
+
+| Variable | Description |
+|---|---|
+| `VITE_API_URL` | Backend API URL (default: `http://localhost:3001`) |
+
+Create `.env.development` for local:
+
+```
+VITE_API_URL=http://localhost:3001
+```
 
 ## Pages
 
-| Route | Description |
-|---|---|
-| `/` | Admin chat interface with leads panel on the right |
-| `/invite/:invitationId` | Lead-facing invitation page — loaded from email link |
+- `/` — Admin chat interface with leads panel
+- `/invite/:invitationId` — Invitee acceptance page
 
-## Trade-offs & What I'd Improve With More Time
+## Deployment (Vercel)
 
-**No real admin auth** — the admin view is open to anyone who visits the URL. In production I'd gate it behind a Google login (the OAuth flow is already in the backend) and redirect unauthenticated users.
+**SPA routing**: `vercel.json` in the frontend folder handles client-side routing:
 
-**Hardcoded API URL** — all `axios` calls point to `http://localhost:3001`. In production I'd use a `VITE_API_URL` environment variable so the same build can talk to different backend environments without code changes.
+```json
+{
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
+```
 
-**No optimistic UI** — confirmation and acceptance actions wait for the server round-trip before updating the UI. For the invitation accept flow in particular, optimistic updates would make the interaction feel much faster.
+Without this, direct navigation to `/invite/:id` returns a 404.
 
-**No message editing UI** — the backend has a `PATCH /api/invitations/:id/message` endpoint that lets an admin edit AI-drafted messages before they are sent, but there is no corresponding UI for it yet. This would be a natural addition to the slot detail view.
+**Environment variable**: Set `VITE_API_URL` in the Vercel dashboard to point to the Railway backend URL.
