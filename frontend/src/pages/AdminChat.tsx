@@ -3,6 +3,7 @@ import { Button, Input, Spin, Typography } from 'antd';
 import { useEffect, useRef, useState, KeyboardEvent } from 'react';
 import ConfirmationCard from '../components/ConfirmationCard';
 import LeadsPanel, { Lead } from '../components/LeadsPanel';
+import API_URL from '../config';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -123,7 +124,7 @@ export default function AdminChat() {
   async function fetchAuthStatus() {
     try {
       const { data } = await axios.get<{ connected: boolean; email?: string }>(
-        'http://localhost:3001/auth/status'
+        `${API_URL}/auth/status`
       );
       setGoogleConnected(data.connected);
       setAdminEmail(data.email ?? null);
@@ -158,7 +159,7 @@ export default function AdminChat() {
       const { data } = await axios.post<
         { ambiguous: true; clarifyingQuestion: string } |
         { ambiguous: false; parsed: ParsedSlotsResponse }
-      >('http://localhost:3001/api/slots/parse', { input: trimmed });
+      >(`${API_URL}/api/slots/parse`, { input: trimmed });
 
       // Remove loading bubble, then add the real assistant reply.
       setMessages((prev) => {
@@ -198,7 +199,7 @@ export default function AdminChat() {
       // Fetch the current leads list fresh so we always use live data.
       console.log('[confirm] fetching leads...');
       const { data: leadsData } = await axios.get<{ leads: Lead[] }>(
-        'http://localhost:3001/api/leads'
+        `${API_URL}/api/leads`
       );
       const allLeads = leadsData.leads;
       console.log('[confirm] fetched leads:', allLeads);
@@ -214,7 +215,7 @@ export default function AdminChat() {
       console.log('[confirm] leads to invite:', leadsToInvite);
 
       console.log('[confirm] posting to /api/slots/confirm...');
-      const response = await axios.post('http://localhost:3001/api/slots/confirm', {
+      const response = await axios.post(`${API_URL}/api/slots/confirm`, {
         parsed: parsedSlots,
         leads: leadsToInvite,
       });
@@ -314,7 +315,7 @@ export default function AdminChat() {
           </Text>
           <Button
             size="small"
-            onClick={() => { window.location.href = 'http://localhost:3001/auth/google'; }}
+            onClick={() => { window.location.href = `${API_URL}/auth/google`; }}
           >
             Connect Google
           </Button>

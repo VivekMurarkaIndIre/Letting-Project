@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { Alert, Button, Card, Form, Input, List, Spin, Typography } from 'antd';
 import { useEffect, useState } from 'react';
+import API_URL from '../config';
 
 const { Text } = Typography;
 
@@ -13,7 +14,7 @@ export interface Lead {
   notes?: string;
 }
 
-const API = 'http://localhost:3001/api/leads';
+const API = `${API_URL}/api/leads`;
 
 // ---- component -----------------------------------------------------------
 

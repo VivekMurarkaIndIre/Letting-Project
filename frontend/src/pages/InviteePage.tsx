@@ -2,6 +2,7 @@ import axios from 'axios';
 import { Alert, Button, Card, Divider, Spin, Tag, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import API_URL from '../config';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -70,13 +71,13 @@ export default function InviteePage() {
 
     try {
       const { data: invData } = await axios.get<{ invitation: Invitation }>(
-        `http://localhost:3001/api/invitations/${id}`
+        `${API_URL}/api/invitations/${id}`
       );
       const inv = invData.invitation;
       setInvitation(inv);
 
       const { data: slotData } = await axios.get<{ slot: Slot }>(
-        `http://localhost:3001/api/slots/${inv.slotId}`
+        `${API_URL}/api/slots/${inv.slotId}`
       );
       setSlot(slotData.slot);
     } catch (err: any) {
@@ -103,7 +104,7 @@ export default function InviteePage() {
       const { data } = await axios.post<
         { success: true; invitation: Invitation } |
         { success: false; alternativeSlots: Slot[] }
-      >(`http://localhost:3001/api/invitations/${invitation.id}/accept`);
+      >(`${API_URL}/api/invitations/${invitation.id}/accept`);
 
       if (data.success) {
         setInvitation(data.invitation);
