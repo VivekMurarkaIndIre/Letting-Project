@@ -10,6 +10,9 @@ export const COLLECTIONS = {
 // Initialise the Admin SDK once. Subsequent calls to getApps() prevent double-init
 // if this module is imported multiple times (e.g. during hot-reload in dev).
 if (!admin.apps.length) {
+  console.log('[firebase] FIREBASE_SERVICE_ACCOUNT_JSON present:', !!process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  console.log('[firebase] NODE_ENV:', process.env.NODE_ENV);
+
   if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     // Production: entire service account JSON stored as a single env var
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
