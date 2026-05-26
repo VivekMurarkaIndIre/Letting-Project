@@ -4,6 +4,8 @@
 - **Frontend**: https://letting-project-4kwp.vercel.app
 - **Backend API**: https://letting-project-production.up.railway.app
 
+![Admin chat interface showing Google connected banner, chat area, and leads panel](docs/screenshot-admin.png)
+
 ## What Is This?
 
 A full-stack AI-native property viewing slot manager built as a take-home challenge for Lette. Instead of filling out forms, property managers describe what they need in natural language and the system interprets, confirms, and creates viewing slots — then automatically drafts personalised invitation emails for each lead.
@@ -27,24 +29,39 @@ AI is not a sidebar feature here. It is the primary interface and decision-makin
 ## Architecture
 
 ```
-Admin Chat UI (React)
-↓ natural language input
-POST /api/slots/parse
-↓ Vercel AI SDK + Gemini
-↓ generateObject() → Zod schema → guaranteed structured JSON
-↓ ambiguity check → clarifying question if needed
-Confirmation Card (React)
-↓ admin confirms
-POST /api/slots/confirm
-↓ save slots to Firestore
-↓ for each lead:
-    Draft invitation → LLM-as-Judge → retry if failed → save
-    Send email via Gmail API (from admin's own account)
-    Add event to Google Calendar
-Invitee receives email → clicks link → /invite/:id
-↓ Accept button
-POST /api/invitations/:id/accept
-↓ capacity check → accept or return alternative slots
+┌─────────────────────────────────────────┐
+│         Admin Chat UI (React)           │
+│   "Set up 3 viewings next Tuesday..."   │
+└────────────────┬────────────────────────┘
+                 │ POST /api/slots/parse
+                 ▼
+┌─────────────────────────────────────────┐
+│     Vercel AI SDK + Gemini 2.0 Flash    │
+│  generateObject() → Zod schema → JSON   │
+│  ambiguous? → clarifying question       │
+└────────────────┬────────────────────────┘
+                 │ admin confirms
+                 │ POST /api/slots/confirm
+                 ▼
+┌─────────────────────────────────────────┐
+│            For each slot:               │
+│  • Save to Firestore                    │
+│  • Add to Google Calendar               │
+│                                         │
+│            For each lead:               │
+│  • Draft invitation (LLM)               │
+│  • Judge draft (LLM) → retry if failed  │
+│  • Save to Firestore                    │
+│  • Send via Gmail API                   │
+└────────────────┬────────────────────────┘
+                 │ lead clicks email link
+                 ▼
+┌─────────────────────────────────────────┐
+│      /invite/:id  (Invitee Page)        │
+│      POST /api/invitations/:id/accept   │
+│      capacity check → accept            │
+│                     → alternative slots │
+└─────────────────────────────────────────┘
 ```
 
 ## Provider-Agnostic LLM Layer
@@ -63,15 +80,30 @@ This works because both Google and Anthropic expose OpenAI-compatible REST endpo
 Every invitation message goes through a two-step quality pipeline:
 
 ```
-Draft message (LLM call 1)
-↓
-Judge: does it contain correct address, date, time, lead name? (LLM call 2)
-↓ FAIL
-Retry with judge's feedback injected into prompt (LLM call 3)
-↓ still FAIL
-Humanise the error: convert technical reason to friendly question (LLM call 4)
-↓
-Return friendly clarification to admin
+┌─────────────────────────────────────────────────────────┐
+│  LLM call 1 — Draft                                     │
+│  Write a warm, personalised invitation email            │
+└────────────────────────┬────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│  LLM call 2 — Judge                                     │
+│  Check: correct address, date, time, lead name,         │
+│         no unfilled placeholders, no invented details   │
+└──────┬──────────────────────────────────────┬───────────┘
+       │ PASS                                 │ FAIL
+       ▼                                      ▼
+  Save & send              ┌─────────────────────────────────────────┐
+                           │  LLM call 3 — Retry                     │
+                           │  Redraft with judge's feedback injected  │
+                           └──────┬──────────────────────┬───────────┘
+                                  │ PASS                 │ FAIL
+                                  ▼                      ▼
+                             Save & send    ┌────────────────────────────┐
+                                           │  LLM call 4 — Humanise     │
+                                           │  Convert technical reason   │
+                                           │  to friendly admin message  │
+                                           └────────────────────────────┘
 ```
 
 If the judge passes, the message is saved. If it fails twice, the admin sees a friendly message asking them to clarify — never a raw error.
