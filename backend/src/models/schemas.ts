@@ -40,8 +40,8 @@ export const ParsedSlotsResponseSchema = z.object({
   slots: z.array(
     z.object({
       propertyAddress: z.string(),
-      date: z.string().describe('YYYY-MM-DD'),
-      time: z.string().describe('HH:MM'),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD').describe('YYYY-MM-DD'),
+      time: z.string().regex(/^\d{2}:\d{2}$/, 'Expected HH:MM').describe('HH:MM'),
       duration: z.number().int().positive().describe('Duration in minutes'),
       maxAttendees: z.number().int().positive(),
     })
