@@ -10,7 +10,10 @@ export const COLLECTIONS = {
 // Initialise the Admin SDK once. Subsequent calls to getApps() prevent double-init
 // if this module is imported multiple times (e.g. during hot-reload in dev).
 if (!admin.apps.length) {
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY
+    ?.replace(/\\\\n/g, '\n')  // handle \\n (double escaped)
+    ?.replace(/\\n/g, '\n')    // handle \n (single escaped)
+    ?.replace(/\n/g, '\n');    // normalize any remaining
 
   if (process.env.FIREBASE_PRIVATE_KEY) {
     // Production: credentials supplied via individual env vars (e.g. Railway)
