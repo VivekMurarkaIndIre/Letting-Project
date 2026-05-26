@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ps *)",
+      "Bash(curl -sv http://localhost:3001/api/slots/parse)",
+      "Bash(curl -s http://localhost:3001/api/slots/nonexistent)",
+      "Bash(curl -s http://localhost:3001/api/invitations/abc)",
+      "Bash(curl -s -X GET http://localhost:3001/api/slots/abc/invitations)",
+      "Bash(curl -s -X POST http://localhost:3001/api/slots/confirm -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(curl *)",
+      "Bash(npm install *)",
+      "Bash(git *)"
+    ]
+  }
+}
