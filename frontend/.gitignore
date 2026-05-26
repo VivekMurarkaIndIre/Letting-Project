@@ -12,5 +12,12 @@ dist/
 # Vite
 *.local
 
+# Test coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
 # OS
 .DS_Store

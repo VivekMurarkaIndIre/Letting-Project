@@ -15,6 +15,13 @@ firebase-service-account.json
 # Source maps
 *.js.map
 
+# Test coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
 # OS
 .DS_Store
 Thumbs.db
@@ -22,3 +29,6 @@ Thumbs.db
 # Editors
 .vscode/
 .idea/
+
+# Claude Code local settings
+.claude/

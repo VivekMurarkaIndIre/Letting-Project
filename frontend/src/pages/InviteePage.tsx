@@ -1,6 +1,7 @@
 import axios from 'axios';
-import { Alert, Button, Card, Divider, Input, Tag, Typography } from 'antd';
-import { useState } from 'react';
+import { Alert, Button, Card, Divider, Spin, Tag, Typography } from 'antd';
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -49,8 +50,10 @@ const NAVY = '#1a2744';
 // ---- component -----------------------------------------------------------
 
 export default function InviteePage() {
-  const [inputId, setInputId] = useState('');
-  const [invitationId, setInvitationId] = useState('');
+  // When accessed via /invite/:invitationId the param is present.
+  // When rendered inside the admin tab switcher it is undefined.
+  const { invitationId } = useParams<{ invitationId?: string }>();
+
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [slot, setSlot] = useState<Slot | null>(null);
   const [alternativeSlots, setAlternativeSlots] = useState<Slot[]>([]);
@@ -58,16 +61,12 @@ export default function InviteePage() {
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleLoad() {
-    const id = inputId.trim();
-    if (!id) return;
-
+  async function loadInvitation(id: string) {
     setLoading(true);
     setError(null);
     setInvitation(null);
     setSlot(null);
     setAlternativeSlots([]);
-    setInvitationId(id);
 
     try {
       const { data: invData } = await axios.get<{ invitation: Invitation }>(
@@ -76,8 +75,6 @@ export default function InviteePage() {
       const inv = invData.invitation;
       setInvitation(inv);
 
-      // NOTE: GET /api/slots/:slotId does not exist yet — needs to be added
-      // to slots.routes.ts before this call will succeed.
       const { data: slotData } = await axios.get<{ slot: Slot }>(
         `http://localhost:3001/api/slots/${inv.slotId}`
       );
@@ -89,6 +86,13 @@ export default function InviteePage() {
     }
   }
 
+  // Auto-load when an invitationId is present in the URL.
+  useEffect(() => {
+    if (invitationId) {
+      loadInvitation(invitationId);
+    }
+  }, [invitationId]);
+
   async function handleAccept() {
     if (!invitation) return;
     setAccepting(true);
@@ -99,7 +103,7 @@ export default function InviteePage() {
       const { data } = await axios.post<
         { success: true; invitation: Invitation } |
         { success: false; alternativeSlots: Slot[] }
-      >(`http://localhost:3001/api/invitations/${invitationId}/accept`);
+      >(`http://localhost:3001/api/invitations/${invitation.id}/accept`);
 
       if (data.success) {
         setInvitation(data.invitation);
@@ -119,39 +123,25 @@ export default function InviteePage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f0f2f5' }}>
-      {/* Testing bar */}
-      <div style={{ background: '#f5f5f5', borderBottom: '1px solid #e0e0e0', padding: '10px 16px' }}>
-        <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Text style={{ fontSize: 12, color: '#888', whiteSpace: 'nowrap' }}>
-            Testing mode — paste an invitation ID:
-          </Text>
-          <Input
-            value={inputId}
-            onChange={(e) => setInputId(e.target.value)}
-            onPressEnter={handleLoad}
-            placeholder="e.g. a1b2c3d4-..."
-            size="small"
-            style={{ flex: 1 }}
-          />
-          <Button size="small" onClick={handleLoad} loading={loading} disabled={!inputId.trim()}>
-            Load Invitation
-          </Button>
-        </div>
-      </div>
-
-      {/* Main content */}
       <div style={{ padding: '32px 16px' }}>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
+
+          {/* Loading spinner */}
+          {loading && (
+            <div style={{ textAlign: 'center', padding: 48 }}>
+              <Spin size="large" />
+            </div>
+          )}
 
           {/* Error state */}
           {error && (
             <Alert type="error" message={error} showIcon style={{ marginBottom: 16 }} closable onClose={() => setError(null)} />
           )}
 
-          {/* Empty / initial state */}
-          {!invitation && !loading && !error && (
+          {/* Empty state — shown in the admin tab when no ID is in the URL */}
+          {!invitationId && !loading && !error && (
             <Card style={{ textAlign: 'center', color: '#aaa' }}>
-              <Text type="secondary">Enter an invitation ID above to view your invitation.</Text>
+              <Text type="secondary">Open an invitation link to view this page.</Text>
             </Card>
           )}
 

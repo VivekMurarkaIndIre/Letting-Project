@@ -2,49 +2,53 @@
 
 ## Overview
 
-The backend is an Express + TypeScript REST API that lets a property manager describe viewing slots in plain English and automatically generates personalised invitation emails for each lead. It uses Firebase Firestore for persistence, the Vercel AI SDK for structured LLM output, and Gemini 2.0 Flash as the default model — with Anthropic Claude available via a single environment variable switch.
+Full-stack AI-native backend for managing property viewing slots. A property manager types a natural-language request; the backend parses it into structured slot data, creates viewing slots in Firestore, drafts personalised invitation emails via LLM, and sends them through the admin's own Gmail account. Built with Express + TypeScript, Firebase Firestore, the Vercel AI SDK, and Google OAuth.
 
-## Architecture
+## Tech Stack
 
-The service layer is split into four focused modules:
-
-| File | Responsibility |
+| Layer | Technology |
 |---|---|
-| `services/llm.ts` | Provider-agnostic AI layer — wraps Vercel AI SDK and exposes `getModel()` and `generateObject`. Switching between Gemini and Anthropic requires only an env var change. |
-| `services/slots.ts` | Parses natural-language scheduling input into structured slot objects via LLM, then persists them to Firestore. |
-| `services/invitations.ts` | Drafts personalised invitation emails, runs them through an LLM-as-Judge quality check, retries with feedback on failure, and humanises any remaining errors for the admin. |
-| `services/firebase.ts` | Thin Firestore helpers (`createDoc`, `getDoc`, `updateDoc`, `queryCollection`) with typed generics. Document IDs are set to the object's own UUID so lookups are predictable. |
+| Runtime | Node.js + TypeScript |
+| Framework | Express |
+| Database | Firebase Firestore |
+| AI | Vercel AI SDK · Gemini 2.0 Flash (default) |
+| Email | Gmail API via Google OAuth |
+| Calendar | Google Calendar API via Google OAuth |
+| Validation | Zod |
 
-## AI Design Decisions
+## AI Architecture
 
 ### 1. Provider-agnostic LLM layer
 
-`getModel()` reads `LLM_PROVIDER` from the environment and constructs a provider using the Vercel AI SDK's OpenAI-compatible adapter. Both Gemini (via Google's OpenAI-compat endpoint) and Anthropic Claude are supported. Swapping providers requires changing one env var — no code changes needed.
+`getModel()` in `services/llm.ts` reads `LLM_PROVIDER` from the environment and constructs a provider using the Vercel AI SDK's OpenAI-compatible adapter. Both Gemini (via Google's OpenAI-compat endpoint) and Anthropic Claude are supported. Swapping providers requires changing one env var — no code changes needed.
 
 ### 2. `generateObject` with Zod schemas
 
-Every LLM call uses `generateObject` with an explicit Zod schema rather than free-form text generation. The SDK enforces the schema at the API level, so the application always receives a typed, validated object — no manual JSON parsing, no silent field omissions.
+Every LLM call uses `generateObject` with an explicit Zod schema rather than free-form text generation. The SDK enforces the schema at the API level, so the application always receives a typed, validated object — no manual JSON parsing, no silent field omissions. The same Zod schemas serve as both the LLM output contract and the TypeScript type source.
 
-### 3. LLM-as-Judge quality layer
+### 3. LLM-as-Judge pattern
 
-Every invitation message goes through a two-step process:
+Every invitation message is validated before being saved:
 
-1. **Draft** — the LLM writes a warm, personalised email using the slot and lead details.
-2. **Judge** — a second LLM call evaluates the draft against seven explicit rules (correct address, date, time, lead name, no unfilled placeholders, professional tone, no invented details).
+1. **Draft** — the LLM writes a personalised email from the slot and lead details.
+2. **Judge** — a second LLM call checks the draft against seven rules: correct address, date, time, lead name, no unfilled placeholders, professional tone, no invented details.
+3. **Retry** — if the draft fails, it is retried once with the judge's feedback injected into the prompt.
 
-If the draft fails, it is retried once with the judge's specific feedback injected into the prompt. This catches the most common failure modes (hallucinated details, generic sign-offs left as placeholders) without requiring manual review of every message.
+This catches hallucinated details and generic placeholders without requiring manual review.
 
 ### 4. Humanised error messages
 
-If both draft attempts fail the judge, a third LLM call translates the raw technical failure reason into a short, friendly clarification question addressed to the property manager. The admin never sees internal error strings — only actionable plain-English prompts like "Could you double-check the property address?"
+If both draft attempts fail the judge, a third LLM call translates the raw failure reason into a short, friendly clarification question for the property manager. The admin never sees internal error strings — only actionable plain-English prompts.
 
 ## Setup Instructions
 
 ### Prerequisites
 
 - Node.js v18+
-- A Google AI Studio API key — free at [aistudio.google.com](https://aistudio.google.com)
-- A Firebase project with Firestore enabled (Spark plan is sufficient)
+- Google AI Studio API key — free at [aistudio.google.com](https://aistudio.google.com)
+- Firebase project with Firestore enabled (Spark plan is sufficient)
+- Google Cloud project with the Gmail API and Calendar API enabled
+- OAuth 2.0 Client ID from Google Cloud Console → APIs & Services → Credentials
 
 ### Installation
 
@@ -56,10 +60,10 @@ npm install
 # 2. Create your environment file
 cp .env.example .env
 
-# 3. Fill in .env (see Environment Variables section below)
+# 3. Fill in all .env values (see Environment Variables below)
 
 # 4. Add your Firebase service account
-#    In the Firebase console: Project Settings → Service Accounts → Generate new private key
+#    Firebase Console → Project Settings → Service Accounts → Generate new private key
 #    Save the downloaded file as backend/firebase-service-account.json
 #    (this file is gitignored — never commit it)
 
@@ -67,16 +71,24 @@ cp .env.example .env
 npm run dev
 ```
 
-The server starts on `http://localhost:3001` by default.
+The server starts on `http://localhost:3001`.
+
+### Connecting Google (first run)
+
+After the server starts, visit `http://localhost:3001/auth/google`. Complete the consent screen — tokens are saved to Firestore and the admin UI will show a green "Google connected" banner. Gmail and Calendar features activate automatically.
 
 ## Environment Variables
 
 | Variable | Required | Description |
 |---|---|---|
 | `LLM_PROVIDER` | No | `gemini` (default) or `anthropic` |
-| `GEMINI_API_KEY` | Yes (if gemini) | API key from [aistudio.google.com](https://aistudio.google.com) |
-| `ANTHROPIC_API_KEY` | Yes (if anthropic) | API key from [console.anthropic.com](https://console.anthropic.com) |
-| `FIREBASE_PROJECT_ID` | Yes | Your Firebase project ID (e.g. `my-project-12345`) |
+| `GEMINI_API_KEY` | Yes | From [aistudio.google.com](https://aistudio.google.com) — free tier available |
+| `ANTHROPIC_API_KEY` | No | From [console.anthropic.com](https://console.anthropic.com) — alternative provider |
+| `FIREBASE_PROJECT_ID` | Yes | Your Firebase project ID |
+| `GOOGLE_CLIENT_ID` | Yes | OAuth 2.0 Client ID from Google Cloud Console |
+| `GOOGLE_CLIENT_SECRET` | Yes | OAuth 2.0 Client Secret |
+| `GOOGLE_REDIRECT_URI` | Yes | `http://localhost:3001/auth/google/callback` (dev) |
+| `FRONTEND_URL` | Yes | `http://localhost:5173` (dev) |
 
 ## API Endpoints
 
@@ -84,39 +96,34 @@ The server starts on `http://localhost:3001` by default.
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/slots/parse` | Sends natural-language input to the LLM for parsing. Returns structured slot data or a clarifying question if the input is ambiguous. |
-| `POST` | `/api/slots/confirm` | Creates slot documents in Firestore and generates AI-drafted invitations for all leads. Returns the created slots and invitations. |
-| `GET` | `/api/slots/:slotId` | Fetches a single slot by ID. |
-| `GET` | `/api/slots/:slotId/invitations` | Returns all invitations associated with a slot. |
-
-**POST /api/slots/parse — request body**
-```json
-{ "input": "Set up 2 viewings for 22 Maple Street next Tuesday at 10am and 2pm" }
-```
-
-**POST /api/slots/confirm — request body**
-```json
-{
-  "parsed": { "slots": [...], "leadNames": [...], "ambiguous": false },
-  "leads": [{ "id": "...", "name": "John", "email": "john@example.com" }]
-}
-```
+| `POST` | `/api/slots/parse` | Natural language input → structured slot preview (or clarifying question) |
+| `POST` | `/api/slots/confirm` | Save confirmed slots, draft and send invitations |
+| `GET` | `/api/slots/:slotId` | Fetch single slot |
+| `GET` | `/api/slots/:slotId/invitations` | All invitations for a slot |
 
 ### Invitations
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/invitations/:invitationId` | Fetches a single invitation. Used by the lead-facing accept page. |
-| `POST` | `/api/invitations/:invitationId/accept` | Confirms a lead's acceptance. Re-checks slot capacity at accept time; returns alternative slots if the slot is now full. |
-| `PATCH` | `/api/invitations/:invitationId/message` | Lets the admin edit the AI-drafted message before sending. |
+| `GET` | `/api/invitations/:id` | Fetch invitation |
+| `POST` | `/api/invitations/:id/accept` | Accept with real-time capacity enforcement |
+| `PATCH` | `/api/invitations/:id/message` | Edit AI-drafted message |
 
 ### Leads
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/leads` | Returns all leads. |
-| `POST` | `/api/leads` | Creates a new lead. Requires `name` and `email`; `notes` is optional. |
-| `DELETE` | `/api/leads/:leadId` | Permanently removes a lead. |
+| `GET` | `/api/leads` | List all leads |
+| `POST` | `/api/leads` | Create lead (requires `name` and `email`) |
+| `DELETE` | `/api/leads/:id` | Delete lead |
+
+### Auth
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/auth/google` | Redirect admin to Google OAuth consent screen |
+| `GET` | `/auth/google/callback` | Exchange code for tokens, save to Firestore |
+| `GET` | `/auth/status` | Returns `{ connected: boolean, email?: string }` |
 
 ## Running Tests
 
@@ -124,19 +131,19 @@ The server starts on `http://localhost:3001` by default.
 npm test
 ```
 
-All LLM and Firebase calls are mocked — no API key or Firestore connection is needed to run the test suite. The two test suites cover:
+No API key or Firestore connection required — all LLM and Firebase calls are mocked. The two test suites cover:
 
-- **`capacity.test.ts`** — `acceptInvitation` correctly enforces slot capacity, increments attendee count, and returns alternative slots when full.
-- **`llm-parsing.test.ts`** — Zod schemas correctly accept valid LLM responses and reject malformed ones (invalid date/time formats, negative durations, missing required fields).
+- **`capacity.test.ts`** — `acceptInvitation` capacity enforcement, attendee count increment, and alternative slot handling.
+- **`llm-parsing.test.ts`** — Zod schema validation for LLM responses: valid inputs accepted, invalid date/time formats, negative durations, and missing fields all rejected correctly.
 
-## Trade-offs & What I'd Improve
+## Trade-offs & What I'd Improve With More Time
 
-**Authentication** — the admin API has no auth. In production I'd add JWT middleware (or Firebase Auth tokens) and scope the leads/slots endpoints to verified admin users only.
+**Authentication** — admin auth is Google OAuth but there is no lead-facing auth. In production, invitation links would be signed or time-limited so only the intended recipient can accept.
 
-**Rate limit handling** — LLM calls are currently sequential with fixed 2-second delays between leads and slots to stay within Gemini's free-tier rate limits. In production I'd replace this with a proper job queue (e.g. BullMQ + Redis) that handles back-pressure, retries with exponential backoff, and gives the frontend real-time progress updates.
+**Rate limiting** — LLM calls are currently sequential with fixed 2-second delays to stay within Gemini's free-tier rate limits. In production I'd replace this with a job queue (BullMQ + Redis) that handles back-pressure, exponential backoff, and real-time progress updates to the frontend.
 
-**Judge retry count** — the judge retries exactly once. A configurable `maxRetries` with exponential backoff would be more robust without adding much complexity.
+**Token refresh** — Google OAuth tokens expire after one hour. In production I'd add middleware that detects expired tokens and refreshes them automatically using the stored `refresh_token` before each API call.
 
-**Email delivery** — invitations are stored in Firestore but not actually sent. The natural next step is to integrate a transactional email provider (Resend or SendGrid) and trigger sends from the `createInvitations` function after each message passes the judge.
+**Calendar conflict detection** — the current implementation creates calendar events but does not check for conflicts first. In production I'd query the calendar's free/busy data before confirming slots to prevent double-booking.
 
-**Capacity race condition** — `acceptInvitation` re-checks capacity before updating, but two concurrent accepts could both pass the check and both increment the counter. A Firestore transaction would make this atomic.
+**Email templates** — emails are built with inline HTML strings. React Email would give richer, more maintainable templates with preview support.

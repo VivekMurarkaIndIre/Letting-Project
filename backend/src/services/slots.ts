@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { ParsedSlotsResponse, ParsedSlotsResponseSchema, ViewingSlot } from '../models/schemas';
+import { addSlotToCalendar } from './calendar';
 import { COLLECTIONS, createDoc, queryCollection } from './firebase';
 import { generateObject, getModel } from './llm';
 
@@ -73,6 +74,7 @@ export async function createViewingSlots(
     };
 
     await createDoc<ViewingSlot>(COLLECTIONS.SLOTS, viewingSlot);
+    await addSlotToCalendar(viewingSlot);
     created.push(viewingSlot);
   }
 

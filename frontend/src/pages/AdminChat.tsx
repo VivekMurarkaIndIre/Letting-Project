@@ -112,11 +112,33 @@ export default function AdminChat() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const todayLabel = new Date().toLocaleDateString('en-GB', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
+
+  async function fetchAuthStatus() {
+    try {
+      const { data } = await axios.get<{ connected: boolean; email?: string }>(
+        'http://localhost:3001/auth/status'
+      );
+      setGoogleConnected(data.connected);
+      setAdminEmail(data.email ?? null);
+    } catch {
+      // silently ignore — banner will show as disconnected
+    }
+  }
+
+  // Check Google connection on mount; clean up the ?google=connected redirect param.
+  useEffect(() => {
+    if (window.location.search.includes('google=connected')) {
+      window.history.replaceState({}, '', '/');
+    }
+    fetchAuthStatus();
+  }, []);
 
   // Scroll to the newest message whenever messages change.
   useEffect(() => {
@@ -277,6 +299,27 @@ export default function AdminChat() {
         </Text>
         <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13 }}>{todayLabel}</Text>
       </div>
+
+      {/* Google connection banner */}
+      {googleConnected ? (
+        <div style={{ background: '#f6ffed', borderBottom: '1px solid #b7eb8f', padding: '8px 24px' }}>
+          <Text style={{ fontSize: 13, color: '#52c41a' }}>
+            ✓ Google connected · Sending emails as {adminEmail}
+          </Text>
+        </div>
+      ) : (
+        <div style={{ background: '#fffbe6', borderBottom: '1px solid #ffe58f', padding: '8px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={{ fontSize: 13 }}>
+            ⚠️ Connect Google to enable email sending and calendar sync
+          </Text>
+          <Button
+            size="small"
+            onClick={() => { window.location.href = 'http://localhost:3001/auth/google'; }}
+          >
+            Connect Google
+          </Button>
+        </div>
+      )}
 
       {/* Body — two columns */}
       <div style={{ display: 'flex', flexDirection: 'row', flex: 1, overflow: 'hidden' }}>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from 'antd';
+import { Route, Routes } from 'react-router-dom';
 import AdminChat from './pages/AdminChat';
 import InviteePage from './pages/InviteePage';
 
@@ -7,7 +8,7 @@ type Page = 'admin' | 'invitee';
 
 const NAVY = '#1a2744';
 
-export default function App() {
+function AdminLayout() {
   const [page, setPage] = useState<Page>('admin');
 
   return (
@@ -44,5 +45,14 @@ export default function App() {
         <InviteePage />
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/invite/:invitationId" element={<InviteePage />} />
+      <Route path="*" element={<AdminLayout />} />
+    </Routes>
   );
 }

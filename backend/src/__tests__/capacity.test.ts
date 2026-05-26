@@ -21,6 +21,12 @@ jest.mock('../services/llm', () => ({
   generateObject: jest.fn(),
 }));
 
+// Mock email service — not under test here
+jest.mock('../services/email', () => ({
+  sendInvitationEmail: jest.fn().mockResolvedValue(undefined),
+  sendSlotFullEmail: jest.fn().mockResolvedValue(undefined),
+}));
+
 import { getDoc, updateDoc } from '../services/firebase';
 import { getAvailableSlotsByProperty } from '../services/slots';
 

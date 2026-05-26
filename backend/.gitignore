@@ -8,11 +8,18 @@ dist/
 .env
 .env.local
 
-# Firebase credentials — never commit
-firebase-service-account.json
+# Firebase credentials — never commit (root-anchored so __mocks__ copy is not ignored)
+/firebase-service-account.json
 
 # Source maps
 *.js.map
+
+# Test coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
 
 # OS
 .DS_Store

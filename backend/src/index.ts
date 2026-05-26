@@ -3,6 +3,7 @@ dotenv.config();
 
 import cors from 'cors';
 import express from 'express';
+import authRouter from './routes/auth.routes';
 import invitationsRouter from './routes/invitations.routes';
 import leadsRouter from './routes/leads.routes';
 import slotsRouter from './routes/slots.routes';
@@ -15,6 +16,7 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 app.get('/health', (_req, res) => { res.json({ status: 'ok' }); });
+app.use('/auth', authRouter);
 app.use('/api/slots', slotsRouter);
 app.use('/api/invitations', invitationsRouter);
 app.use('/api/leads', leadsRouter);

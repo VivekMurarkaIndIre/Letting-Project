@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { Invitation, Lead, ViewingSlot } from '../models/schemas';
 import { COLLECTIONS, createDoc, getDoc, queryCollection, updateDoc } from './firebase';
+import { sendInvitationEmail, sendSlotFullEmail } from './email';
 import { generateObject, getModel } from './llm';
 import { getAvailableSlotsByProperty } from './slots';
 
@@ -222,6 +223,7 @@ export async function createInvitations(
     };
 
     await createDoc<Invitation>(COLLECTIONS.INVITATIONS, invitation);
+    await sendInvitationEmail(invitation, slot);
     created.push(invitation);
   }
 
@@ -250,6 +252,7 @@ export async function acceptInvitation(invitationId: string): Promise<{
 
   if (slot.currentAttendees >= slot.maxAttendees) {
     const alternativeSlots = await getAvailableSlotsByProperty(slot.propertyAddress);
+    await sendSlotFullEmail(invitation.lead, alternativeSlots ?? []);
     return { success: false, alternativeSlots };
   }
 
