@@ -9,7 +9,8 @@
       "Bash(curl -s -X POST http://localhost:3001/api/slots/confirm -H \"Content-Type: application/json\" -d '{}')",
       "Bash(curl *)",
       "Bash(npm install *)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(npm test *)"
     ]
   }
 }
