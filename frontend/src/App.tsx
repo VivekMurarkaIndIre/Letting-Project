@@ -2,11 +2,18 @@ import { useState } from 'react';
 import { Button } from 'antd';
 import { Route, Routes } from 'react-router-dom';
 import AdminChat from './pages/AdminChat';
+import AdminDashboard from './pages/AdminDashboard';
 import InviteePage from './pages/InviteePage';
 
-type Page = 'admin' | 'invitee';
+type Page = 'admin' | 'dashboard' | 'invitee';
 
 const NAVY = '#1a2744';
+
+const TAB_LABELS: Record<Page, string> = {
+  admin: 'Admin View',
+  dashboard: 'Dashboard',
+  invitee: 'Invitee View',
+};
 
 function AdminLayout() {
   const [page, setPage] = useState<Page>('admin');
@@ -24,7 +31,7 @@ function AdminLayout() {
         flexShrink: 0,
         zIndex: 10,
       }}>
-        {(['admin', 'invitee'] as Page[]).map((p) => (
+        {(['admin', 'dashboard', 'invitee'] as Page[]).map((p) => (
           <Button
             key={p}
             type={page === p ? 'primary' : 'default'}
@@ -32,14 +39,17 @@ function AdminLayout() {
             style={page === p ? { background: NAVY, borderColor: NAVY } : {}}
             size="small"
           >
-            {p === 'admin' ? 'Admin View' : 'Invitee View'}
+            {TAB_LABELS[p]}
           </Button>
         ))}
       </div>
 
-      {/* Pages — both mounted, inactive one hidden via CSS to preserve state */}
+      {/* Pages — all mounted, inactive ones hidden via CSS to preserve state */}
       <div style={{ flex: 1, overflow: 'hidden', display: page === 'admin' ? 'flex' : 'none', flexDirection: 'column' }}>
         <AdminChat />
+      </div>
+      <div style={{ flex: 1, overflow: 'hidden', display: page === 'dashboard' ? 'flex' : 'none', flexDirection: 'column' }}>
+        <AdminDashboard />
       </div>
       <div style={{ flex: 1, overflow: 'hidden', display: page === 'invitee' ? 'flex' : 'none', flexDirection: 'column' }}>
         <InviteePage />

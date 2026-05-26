@@ -29,6 +29,10 @@ The slot confirmation card is tied to a specific message via `showConfirmation` 
 
 `/invite/:invitationId` loads the invitation directly from the URL — matching the link in the email. React Router handles this with a `BrowserRouter` wrapper.
 
+**Dashboard tab**
+
+The dashboard fetches all slots and their invitations on mount with a manual refresh button. It shows a capacity progress bar per slot and colour-coded status tags (green/orange/red) per invitee. Both pages are always mounted via CSS display toggle so state is preserved.
+
 ## Environment Variables
 
 | Variable | Description |
@@ -43,8 +47,9 @@ VITE_API_URL=http://localhost:3001
 
 ## Pages
 
-- `/` — Admin chat interface with leads panel
-- `/invite/:invitationId` — Invitee acceptance page
+- `/` — Admin chat interface with leads management panel
+- `/dashboard` — (via tab) Admin dashboard showing all slots, capacity bars, and invitation statuses per lead
+- `/invite/:invitationId` — Invitee acceptance page (accessed via email link)
 
 ## Deployment (Vercel)
 

@@ -110,6 +110,7 @@ export default function AdminChat() {
     { role: 'assistant', content: "Hi! Tell me which viewing slots you'd like to set up. For example: \"Set up 3 viewings for 22 Maple Street next Tuesday, invite John and Sarah\"." },
   ]);
   const [parsedSlots, setParsedSlots] = useState<ParsedSlotsResponse | null>(null);
+  const [matchedLeads, setMatchedLeads] = useState<Lead[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -161,6 +162,26 @@ export default function AdminChat() {
         { ambiguous: false; parsed: ParsedSlotsResponse }
       >(`${API_URL}/api/slots/parse`, { input: trimmed });
 
+      if (!data.ambiguous) {
+        try {
+          const { data: leadsData } = await axios.get<{ leads: Lead[] }>(
+            `${API_URL}/api/leads`
+          );
+          const allLeads = leadsData.leads;
+          const matched = allLeads.filter((lead: Lead) =>
+            data.parsed.leadNames.some(
+              (name: string) =>
+                lead.name.toLowerCase().includes(name.toLowerCase()) ||
+                name.toLowerCase().includes(lead.name.toLowerCase().split(' ')[0])
+            )
+          );
+          setMatchedLeads(matched.length > 0 ? matched : allLeads);
+        } catch {
+          setMatchedLeads([]);
+        }
+        setParsedSlots(data.parsed);
+      }
+
       // Remove loading bubble, then add the real assistant reply.
       setMessages((prev) => {
         const withoutLoading = prev.filter((m) => !m.isLoading);
@@ -172,7 +193,6 @@ export default function AdminChat() {
           ];
         }
 
-        setParsedSlots(data.parsed);
         return [
           ...withoutLoading,
           {
@@ -196,30 +216,12 @@ export default function AdminChat() {
     if (!parsedSlots) return;
     setConfirmLoading(true);
     try {
-      // Fetch the current leads list fresh so we always use live data.
-      console.log('[confirm] fetching leads...');
-      const { data: leadsData } = await axios.get<{ leads: Lead[] }>(
-        `${API_URL}/api/leads`
-      );
-      const allLeads = leadsData.leads;
-      console.log('[confirm] fetched leads:', allLeads);
+      const leadsToInvite = matchedLeads.length > 0 ? matchedLeads : [];
 
-      const matchedLeads = allLeads.filter((lead) =>
-        parsedSlots.leadNames.some(
-          (name) =>
-            lead.name.toLowerCase().includes(name.toLowerCase()) ||
-            name.toLowerCase().includes(lead.name.toLowerCase().split(' ')[0])
-        )
-      );
-      const leadsToInvite = matchedLeads.length > 0 ? matchedLeads : allLeads;
-      console.log('[confirm] leads to invite:', leadsToInvite);
-
-      console.log('[confirm] posting to /api/slots/confirm...');
       const response = await axios.post(`${API_URL}/api/slots/confirm`, {
         parsed: parsedSlots,
         leads: leadsToInvite,
       });
-      console.log('[confirm] response status:', response.status, 'data:', response.data);
 
       const nameList = leadsToInvite.map((l) => l.name).join(' and ');
       setMessages((prev) => [
@@ -230,15 +232,9 @@ export default function AdminChat() {
         },
       ]);
     } catch (err: any) {
-      console.log('[confirm] caught error:', err);
-      console.log('[confirm] err.response:', err.response);
-      console.log('[confirm] err.message:', err.message);
-
       const status = err.response?.status;
       const code = err.response?.data?.code;
       const message = err.response?.data?.friendlyMessage;
-
-      console.log('[confirm] status:', status, 'code:', code, 'message:', message);
 
       if (code === 'JUDGE_FAILED' && message) {
         setMessages((prev) => [
@@ -344,7 +340,7 @@ export default function AdminChat() {
                     <div style={{ alignSelf: 'flex-start', marginTop: 8, width: '100%', maxWidth: '70%' }}>
                       <ConfirmationCard
                         parsed={parsedSlots}
-                        leads={[]}
+                        leads={matchedLeads}
                         onConfirm={handleConfirm}
                         onCancel={handleCancel}
                         loading={confirmLoading}

@@ -6,6 +6,10 @@
 
 ![Admin chat interface showing Google connected banner, chat area, and leads panel](docs/screenshot-admin.png)
 
+![Admin dashboard showing viewing slots, capacity bars, and invitation statuses](docs/screenshot-dashboard.png)
+
+![Example invitation email with Accept Invitation button](docs/screenshot-email.png)
+
 ## What Is This?
 
 A full-stack AI-native property viewing slot manager built as a take-home challenge for Lette. Instead of filling out forms, property managers describe what they need in natural language and the system interprets, confirms, and creates viewing slots — then automatically drafts personalised invitation emails for each lead.
@@ -61,6 +65,12 @@ AI is not a sidebar feature here. It is the primary interface and decision-makin
 │      POST /api/invitations/:id/accept   │
 │      capacity check → accept            │
 │                     → alternative slots │
+└─────────────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────┐
+│   Admin Dashboard — view all slots,     │
+│   capacity, and who accepted            │
 └─────────────────────────────────────────┘
 ```
 
@@ -126,6 +136,16 @@ The admin connects their Google account via OAuth once. This gives the app:
 
 Tokens are stored in Firestore (`admin/tokens` document). No third-party email service required.
 
+## Google Account Note
+
+The live demo is connected to a Google account (vivek.murarka.ireland@gmail.com).
+This means:
+- Invitation emails are sent from this Gmail account
+- Viewing slots appear on this Google Calendar
+- Any admin using the live demo shares this connection
+
+In production each admin would authenticate with their own Google account, with tokens stored per user ID. The architecture already supports this — the OAuth flow and token storage in Firestore are in place, it just needs a proper user identity layer.
+
 ## Testing
 
 20 unit tests covering:
@@ -157,5 +177,4 @@ Key deployment lessons learned (see backend README for full details):
 - Calendar conflict detection before creating slots
 - BullMQ job queue replacing sequential LLM calls
 - Streaming invitation drafts to the UI in real time
-- Admin dashboard showing all slots and who accepted
 - Invitation expiry logic

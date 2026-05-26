@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { Lead, ParsedSlotsResponse, ViewingSlot } from '../models/schemas';
 import { createInvitations, getInvitationsBySlot } from '../services/invitations';
-import { COLLECTIONS, getDoc } from '../services/firebase';
+import { COLLECTIONS, db, getDoc } from '../services/firebase';
 import { createViewingSlots, parseNaturalLanguageSlots } from '../services/slots';
 
 const router = Router();
@@ -59,6 +59,31 @@ router.post('/confirm', async (req: Request, res: Response) => {
     if (error.code === 'JUDGE_FAILED') {
       return res.status(422).json({ code: 'JUDGE_FAILED', friendlyMessage: error.message });
     }
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/dashboard
+ *
+ * Returns all slots with their associated invitations.
+ * Used by the admin dashboard to show a full view of slots and RSVPs.
+ */
+router.get('/admin/dashboard', async (_req: Request, res: Response) => {
+  try {
+    const snap = await db.collection(COLLECTIONS.SLOTS).get();
+
+    const slots = snap.docs.map((doc) => doc.data() as ViewingSlot);
+
+    const results = await Promise.all(
+      slots.map(async (slot) => ({
+        slot,
+        invitations: await getInvitationsBySlot(slot.id),
+      }))
+    );
+
+    return res.status(200).json({ dashboard: results });
+  } catch (error: any) {
     return res.status(500).json({ error: error.message });
   }
 });
